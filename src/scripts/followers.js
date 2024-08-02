@@ -35,15 +35,33 @@ const countFollowers = async () => {
   let projects = [];
   let total = [];
 
-  ({ projects } = await apiFetch('/v1/projects/followers', { method: 'GET', queryParams: { offset, limit } }));
-  total.push(...projects);
-
-  while (projects.length === limit) {
-    offset += projects.length;
+  while (projects.length === limit || offset === 0) {
     ({ projects } = await apiFetch('/v1/projects/followers', { method: 'GET', queryParams: { offset, limit } }));
     total.push(...projects);
+    offset += projects.length;
   }
-  
+
+  return total;
+};
+
+const countFollowing = async () => {
+  let batch = 1;
+  let projects = [];
+  let total = [];
+  let input = { 0: {
+    sortOrder: "recently-posted",
+    limit: limit,
+    beforeTimestamp: Date.now(),
+    cursor: 0
+  }};
+
+  while (projects.length === limit || input[0].cursor === 0) {
+    const response = await apiFetch('/v1/trpc/projects.followedFeed.query', { method: 'GET', queryParams: { batch, input } })
+    projects = response[0].projects;
+    total.push(...projects);
+    input[0].cursor += projects.length;
+  }
+
   return total;
 };
 
